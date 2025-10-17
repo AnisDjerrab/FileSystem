@@ -1,3 +1,8 @@
+# Ignoring linux executables
+*
+!*/
+!*.*
+
 # Prerequisites
 *.d
 
@@ -37,10 +42,6 @@
 *.out
 *.app
 
-# Linux ELF executable.
-
-**/[^.]* 
-!*/
 
 # debug information files
 *.dwo
