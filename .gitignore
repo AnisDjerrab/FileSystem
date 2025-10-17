@@ -1,7 +1,6 @@
 # Ignoring linux executables
-*
-!*/
-!*.*
+
+FShell
 
 # Prerequisites
 *.d
