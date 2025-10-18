@@ -1,5 +1,6 @@
 # Ignoring linux executables
 FShell
+test
 
 # Prerequisites
 *.d
