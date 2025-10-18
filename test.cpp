@@ -8,9 +8,7 @@
 
 using namespace std;
 
-// ======================================================
-// Fonction utilitaire : convertir un uint32_t en binaire (32 bits)
-// ======================================================
+
 string ConvertNumberInto32BitsString(int32_t number) {
     string result(32, '0');
     for (int i = 0; i < 32; i++) {
@@ -21,33 +19,34 @@ string ConvertNumberInto32BitsString(int32_t number) {
     return result;
 }
 
-// ======================================================
-// Fonction de hash (variante de la tienne)
-// ======================================================
+
 unique_ptr<char[]> hash32(char* content, size_t SizeOfTheContent) {
     int32_t output = 2246822519u;
     int index = 0;
     int32_t addition = 0;
-    int32_t XOR = 0;
-    int32_t Multiplication = 3432918353u;
     int32_t temp = 4;
     for (size_t i = 0; i < SizeOfTheContent; i += 4) {
         memcpy(&temp, content + i, 4);
-        Multiplication *= temp;
-        addition += temp;
-        XOR ^= temp;
+        addition += temp ^ 374761393;
+        int32_t mix = temp * 2246822519 ^ (output);
+        mix += (mix ^ __rotl(mix, ((i + 11) % 31))) ^ (mix >> 15 * mix >> 23);
+        output += mix;
+        output ^= __rotl(temp, (i % 31));
+        output += temp; 
+        output ^= output >> 16;
+        output *= 3266489917;
+        output ^= output >> 13;
+        output *= 2654435761;
+        output ^= output >> 16;
+        output ^= __rotl(temp, (i + 15 % 31));
+        output *= 668265263;
     }
-    output *= Multiplication;
-    output ^= XOR;
     output += addition;
     auto output_Final = make_unique<char[]>(4);
     memcpy(output_Final.get(), &output, 4);
     return output_Final;
 }
 
-// ======================================================
-// Génération d’un bloc aléatoire de 512 octets
-// ======================================================
 unique_ptr<char[]> generateRandomBlock(size_t size) {
     unique_ptr<char[]> block(new char[size]);
     random_device rd;
@@ -59,23 +58,16 @@ unique_ptr<char[]> generateRandomBlock(size_t size) {
     return block;
 }
 
-// ======================================================
-// Flip d’un bit aléatoire dans le bloc (corrigée)
-// ======================================================
+
 void flipRandomBit(char* block, size_t size, mt19937& gen) {
     uniform_int_distribution<size_t> byteDist(0, size - 1);
     uniform_int_distribution<int> bitDist(0, 7);
     size_t byteIndex = byteDist(gen);
     int bitIndex = bitDist(gen);
-    // utiliser unsigned char pour éviter les comportements indéfinis sur signed char
     reinterpret_cast<unsigned char*>(block)[byteIndex] ^= (1u << bitIndex);
-
-    // --- Pour debug, on peut afficher l'emplacement modifié (optionnel)
-    // cout << "flipRandomBit: byteIndex=" << byteIndex << " bitIndex=" << bitIndex << endl;
 }
 
 
-// --- convertit un hash (4 octets) en string
 string toStringFromHash(unique_ptr<char[]> hashPtr) {
     uint32_t val;
     memcpy(&val, hashPtr.get(), 4);
@@ -87,7 +79,7 @@ string toStringFromHash(unique_ptr<char[]> hashPtr) {
 
 int main() {
     constexpr size_t BLOCK_SIZE = 128;
-    constexpr int MAX_SECONDS = 5;  // durée max du test
+    constexpr int MAX_SECONDS = 5; 
 
     double number = 0;
     int counter = 0;
@@ -119,20 +111,20 @@ int main() {
         memcpy(tempCorruptedBlock.get(), corruptedBlock.get(), BLOCK_SIZE);
         string newHash = toStringFromHash(hash32(tempCorruptedBlock.get(), BLOCK_SIZE));
         if (newHash == originalHash) {
-            counter += 1;
             number += iterations;
+            counter += 1;
             iterations = 0;
-            if (counter >= 10) {
-                cout << "Moyenne de nombre d'iterations avant collision : " << number / 10 << endl; 
+            if (counter >= 100) {
+                cout << "Moyenne de nombre d'iterations avant collision : " << number / 100 << endl; 
                 break;
             }
         }
         if (seenHashes.find(newHash) != seenHashes.end()) {
-            counter += 1;
             number += iterations;
+            counter += 1;
             iterations = 0;
-            if (counter >= 10) {
-                cout << "Moyenne de nombre d'iterations avant collision : " << number / 10 << endl; 
+            if (counter >= 100) {
+                cout << "Moyenne de nombre d'iterations avant collision : " << number / 100  << endl; 
                 break;
             }
         }
