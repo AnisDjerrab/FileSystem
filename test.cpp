@@ -11,7 +11,7 @@
 using namespace std;
 
 
-string ConvertNumberInto32BitsString(int64_t number) {
+string ConvertNumberInto32BitsString(__int128_t number) {
     string result(32, '0');
     for (int i = 0; i < 32; i++) {
         if (number & (1 << (31 - i))) {
@@ -22,20 +22,20 @@ string ConvertNumberInto32BitsString(int64_t number) {
 }
 
 
-int64_t hash64(char* content, size_t SizeOfTheContent) {
-    int64_t output = 8895235923790041094;
-    int64_t temp;
-    SizeOfTheContent = SizeOfTheContent & ~0x7;
-    for (size_t i = 0; i < SizeOfTheContent; i += 8) {
-        temp = *reinterpret_cast<int64_t*>(content + i);
-        output ^= __rotl(temp, (i % 31));
+__int128_t hash128(char* content, size_t SizeOfTheContent) {
+    __int128_t output = 340282366920938463463374607431768211297;
+    __int128_t temp;
+    SizeOfTheContent = SizeOfTheContent & ~0xF;
+    for (size_t i = 0; i < SizeOfTheContent; i += 16) {
+        temp = *reinterpret_cast<__int128_t*>(content + i);
+        output ^= __rotl(temp, (i % 127));
         output += temp; 
-        output ^= output >> 44;
-        output *= 9223372036854775783;
-        output ^= output >> 33;
-        output *= 9223372036854775657;
-        output ^= __rotl(temp, (i + 30 % 63));
-        output *= 2870177450012600261;
+        output ^= output >> 89;
+        output *= 340282366920938463463374607431768211357;
+        output ^= output >> 65;
+        output *= 340282366920938463463374607431768211307;
+        output ^= __rotl(temp, (i + 60 % 127));
+        output *= 340282366920938463463374607431768210407;
     }
     return output;
 }
@@ -61,15 +61,15 @@ void flipRandomBit(char* block, size_t size, mt19937& gen) {
 }
 
 int main() {
-    constexpr size_t BLOCK_SIZE = 2048;
+    constexpr size_t BLOCK_SIZE = 32768;
 
     int number = 0;
 
     auto block = generateRandomBlock(BLOCK_SIZE);
 
-    int64_t originalHash = hash64(block.get(), BLOCK_SIZE);
+    __int128_t originalHash = hash128(block.get(), BLOCK_SIZE);
 
-    unordered_map<int64_t, char*> seenHashesAndBlocks;
+    unordered_map<__int128_t, char*> seenHashesAndBlocks;
     seenHashesAndBlocks[originalHash] = block.get();
 
     random_device rd;
@@ -82,11 +82,11 @@ int main() {
         number++;
         iterations++;
         auto corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-        int64_t newHash = hash64(corruptedBlock.get(), BLOCK_SIZE);
+        __int128_t newHash = hash128(corruptedBlock.get(), BLOCK_SIZE);
         if (seenHashesAndBlocks.find(newHash) != seenHashesAndBlocks.end()) { 
             while (seenHashesAndBlocks[newHash] != corruptedBlock.get()) {
                 corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-                newHash = hash64(corruptedBlock.get(), BLOCK_SIZE);
+                newHash = hash128(corruptedBlock.get(), BLOCK_SIZE);
                 if (seenHashesAndBlocks.find(newHash) == seenHashesAndBlocks.end()) { 
                     break;
                 }
