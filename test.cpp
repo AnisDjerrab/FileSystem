@@ -3,6 +3,7 @@
 #include <cstring>
 #include <random>
 #include <unordered_set>
+#include <unordered_map>
 #include <chrono>
 #include <vector>
 
@@ -20,7 +21,7 @@ string ConvertNumberInto32BitsString(int32_t number) {
 }
 
 
-unique_ptr<char[]> hash32(char* content, size_t SizeOfTheContent) {
+int32_t hash32(char* content, size_t SizeOfTheContent) {
     int32_t output = 2246822519u;
     int index = 0;
     int32_t addition = 0;
@@ -42,9 +43,7 @@ unique_ptr<char[]> hash32(char* content, size_t SizeOfTheContent) {
         output *= 668265263;
     }
     output += addition;
-    auto output_Final = make_unique<char[]>(4);
-    memcpy(output_Final.get(), &output, 4);
-    return output_Final;
+    return output;
 }
 
 unique_ptr<char[]> generateRandomBlock(size_t size) {
@@ -81,18 +80,11 @@ int main() {
     constexpr size_t BLOCK_SIZE = 128;
     constexpr int MAX_SECONDS = 5; 
 
-    double number = 0;
-    int counter = 0;
-
     auto block = generateRandomBlock(BLOCK_SIZE);
 
-    auto initialCopy = make_unique<char[]>(BLOCK_SIZE);
-    memcpy(initialCopy.get(), block.get(), BLOCK_SIZE);
-    auto tempInitialCopy = make_unique<char[]>(BLOCK_SIZE);
-    memcpy(tempInitialCopy.get(), block.get(), BLOCK_SIZE);
-    string originalHash = toStringFromHash(hash32(tempInitialCopy.get(), BLOCK_SIZE));
-    unordered_set<string> seenHashes;
-    seenHashes.insert(originalHash);
+    int32_t originalHash = hash32(block.get(), BLOCK_SIZE);
+    unordered_map<int32_t, char*> seenHashesAndBlocks;
+    seenHashesAndBlocks[originalHash] = block.get();
 
     random_device rd;
     mt19937 gen(rd());
@@ -105,30 +97,25 @@ int main() {
 
         auto corruptedBlock = make_unique<char[]>(BLOCK_SIZE);
         memcpy(corruptedBlock.get(), block.get(), BLOCK_SIZE);
-
         flipRandomBit(corruptedBlock.get(), BLOCK_SIZE, gen);
-        auto tempCorruptedBlock = make_unique<char[]>(BLOCK_SIZE);
-        memcpy(tempCorruptedBlock.get(), corruptedBlock.get(), BLOCK_SIZE);
-        string newHash = toStringFromHash(hash32(tempCorruptedBlock.get(), BLOCK_SIZE));
+        int32_t newHash = hash32(corruptedBlock.get(), BLOCK_SIZE);
+        if (seenHashesAndBlocks.find(newHash) != seenHashesAndBlocks.end()) { 
+            while (strcmp(seenHashesAndBlocks[newHash], corruptedBlock.get())) {
+                memcpy(corruptedBlock.get(), block.get(), BLOCK_SIZE);
+                flipRandomBit(corruptedBlock.get(), BLOCK_SIZE, gen);
+                newHash = hash32(corruptedBlock.get(), BLOCK_SIZE);
+                cout << "corrupted block" << endl;
+            }
+        }
         if (newHash == originalHash) {
-            number += iterations;
-            counter += 1;
-            iterations = 0;
-            if (counter >= 100) {
-                cout << "Moyenne de nombre d'iterations avant collision : " << number / 100 << endl; 
-                break;
-            }
+            cout << "Nombre d'iterations avant collision : " << iterations << endl; 
+            break;
         }
-        if (seenHashes.find(newHash) != seenHashes.end()) {
-            number += iterations;
-            counter += 1;
-            iterations = 0;
-            if (counter >= 100) {
-                cout << "Moyenne de nombre d'iterations avant collision : " << number / 100  << endl; 
-                break;
-            }
+        if (seenHashesAndBlocks.find(newHash) != seenHashesAndBlocks.end()) {
+            cout << "Nombre d'iterations avant collision : " << iterations  << endl; 
+            break;
         }
-        seenHashes.insert(newHash);
+        seenHashesAndBlocks[newHash] = corruptedBlock.get();
     }
     return 0;
 }
