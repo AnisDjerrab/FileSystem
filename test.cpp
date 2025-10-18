@@ -11,7 +11,7 @@
 using namespace std;
 
 
-string ConvertNumberInto32BitsString(int32_t number) {
+string ConvertNumberInto32BitsString(int64_t number) {
     string result(32, '0');
     for (int i = 0; i < 32; i++) {
         if (number & (1 << (31 - i))) {
@@ -22,23 +22,21 @@ string ConvertNumberInto32BitsString(int32_t number) {
 }
 
 
-int32_t hash32(char* content, size_t SizeOfTheContent) {
-    int32_t output = 2246822519u;
-    int32_t addition = 0;
-    int32_t temp;
-    SizeOfTheContent = SizeOfTheContent & ~0x3;
-    for (size_t i = 0; i < SizeOfTheContent; i += 4) {
-        temp = *reinterpret_cast<int32_t*>(content + i);
+int64_t hash64(char* content, size_t SizeOfTheContent) {
+    int64_t output = 8895235923790041094;
+    int64_t temp;
+    SizeOfTheContent = SizeOfTheContent & ~0x7;
+    for (size_t i = 0; i < SizeOfTheContent; i += 8) {
+        temp = *reinterpret_cast<int64_t*>(content + i);
         output ^= __rotl(temp, (i % 31));
         output += temp; 
-        output ^= output >> 16;
-        output *= 3266489917;
-        output ^= output >> 13;
-        output *= 2654435761;
-        output ^= __rotl(temp, (i + 15 % 31));
-        output *= 668265263;
+        output ^= output >> 44;
+        output *= 9223372036854775783;
+        output ^= output >> 33;
+        output *= 9223372036854775657;
+        output ^= __rotl(temp, (i + 30 % 63));
+        output *= 2870177450012600261;
     }
-    output += addition;
     return output;
 }
 
@@ -63,14 +61,15 @@ void flipRandomBit(char* block, size_t size, mt19937& gen) {
 }
 
 int main() {
-    constexpr size_t BLOCK_SIZE = 128;
-    constexpr int MAX_SECONDS = 5; 
+    constexpr size_t BLOCK_SIZE = 2048;
+
+    int number = 0;
 
     auto block = generateRandomBlock(BLOCK_SIZE);
 
-    int32_t originalHash = hash32(block.get(), BLOCK_SIZE);
+    int64_t originalHash = hash64(block.get(), BLOCK_SIZE);
 
-    unordered_map<int32_t, char*> seenHashesAndBlocks;
+    unordered_map<int64_t, char*> seenHashesAndBlocks;
     seenHashesAndBlocks[originalHash] = block.get();
 
     random_device rd;
@@ -80,19 +79,24 @@ int main() {
     size_t iterations = 0;
 
     while (true) {
+        number++;
         iterations++;
         auto corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-        int32_t newHash = hash32(corruptedBlock.get(), BLOCK_SIZE);
+        int64_t newHash = hash64(corruptedBlock.get(), BLOCK_SIZE);
         if (seenHashesAndBlocks.find(newHash) != seenHashesAndBlocks.end()) { 
             while (seenHashesAndBlocks[newHash] != corruptedBlock.get()) {
                 corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-                newHash = hash32(corruptedBlock.get(), BLOCK_SIZE);
+                newHash = hash64(corruptedBlock.get(), BLOCK_SIZE);
                 if (seenHashesAndBlocks.find(newHash) == seenHashesAndBlocks.end()) { 
                     break;
                 }
             }
         }
-        if (iterations > 1000000000) {
+        if (number >= 10000) {
+            seenHashesAndBlocks.clear();
+            number = 0;
+        }
+        if (iterations >= 1000000) {
             newHash = originalHash;
         }
         if (newHash == originalHash) {
