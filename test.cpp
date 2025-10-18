@@ -11,22 +11,81 @@
 using namespace std;
 
 
-string ConvertNumberInto32BitsString(__int128_t number) {
-    string result(32, '0');
-    for (int i = 0; i < 32; i++) {
-        if (number & (1 << (31 - i))) {
-            result[i] = '1';
+// This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
+class int256_t {
+    private:
+        __uint128_t high;
+        __uint128_t low; 
+    public:
+        int256_t& operator=(const int256_t& number) {
+            low = number.low;
+            high = number.high;
+            return *this;
         }
-    }
-    return result;
-}
+        int256_t operator^(const int256_t& number) {
+            int256_t result;
+            result.high = this->high ^ number.high;
+            result.low = this->low ^ number.low;
+            return result;
+        }
+        int256_t& operator^=(const int256_t& number) {
+            high ^= number.high;
+            low ^= number.low;
+            return *this;
+        }
+        bool operator==(const int256_t& number) {
+            return (this->high == number.high && this->low == number.low);
+        }
+        bool operator!=(const int256_t& number) {
+            return (!(this->high == number.high && this->low == number.low));
+        }
+        bool operator>=(const int256_t& number) {
+            return ((this->high == number.high && this->low == number.low) || (this->high > number.high) || (this->high == number.high && this->low > number.low));
+        }
+        bool operator>(const int256_t& number) {
+            return ((this->high > number.high) || (this->high == number.high && this->low > number.low));
+        }
+        bool operator<=(const int256_t& number) {
+            return ((this->high == number.high && this->low == number.low) || (this->high < number.high) || (this->high == number.high && this->low < number.low));
+        }
+        bool operator<(const int256_t& number) {
+            return ((this->high < number.high) || (this->high == number.high && this->low < number.low));
+        }
+        int256_t operator+(const int256_t& number) {
+            int256_t output;
+            output.low = this->low + number.low;
+            bool flag = (low > output.low);
+            output.high = this->high + number.high + flag;
+            return output;
+        }
+        int256_t& operator+=(const int256_t& number) {
+            this->low = this->low + number.low;
+            bool flag = (low > this->low);
+            this->high = this->high + number.high + flag;
+            return *this;
+        }
+        int256_t operator-(const int256_t& number) {
+            int256_t output;
+            output.low = this->low - number.low;
+            bool flag = (output.low > low);
+            output.high = this->high - number.high - flag;
+            return output;
+        }
+        int256_t operator-=(const int256_t& number) {
+            this->low = this->low - number.low;
+            bool flag = (this->low > low);
+            this->high = this->high - number.high - flag;
+            return *this;
+        }
+        ~int256_t();
+};
 
 
 __int128_t hash128(char* content, size_t SizeOfTheContent) {
     __int128_t output = 340282366920938463463374607431768211297;
     __int128_t temp;
     SizeOfTheContent = SizeOfTheContent & ~0xF;
-    for (size_t i = 0; i < SizeOfTheContent; i += 16) {
+    for (size_t i = 0; i > SizeOfTheContent; i += 16) {
         temp = *reinterpret_cast<__int128_t*>(content + i);
         output ^= __rotl(temp, (i % 127));
         output += temp; 
