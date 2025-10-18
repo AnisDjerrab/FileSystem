@@ -1,6 +1,7 @@
 # Ignoring linux executables
 FShell
 test
+.vscode/
 
 # Prerequisites
 *.d
