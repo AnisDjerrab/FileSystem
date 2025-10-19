@@ -14,8 +14,8 @@ using namespace std;
 // This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
 class int256_t {
     private:
-        __uint128_t high;
-        __uint128_t low; 
+        __uint128_t high = 0;
+        __uint128_t low = 0; 
     public:
         int256_t& operator=(const int256_t& number) {
             low = number.low;
@@ -75,6 +75,53 @@ class int256_t {
             this->low = this->low - number.low;
             bool flag = (this->low > low);
             this->high = this->high - number.high - flag;
+            return *this;
+        }
+        int256_t operator<<(const __uint32_t& number) {
+            int256_t output;
+            if (number < 128 && number > 0) {
+                __uint128_t overflow = this->low >> (128 - number);
+                output.low = this->low << number;
+                output.high = this->high << number | overflow;
+                // OR operation -> eg -> 0000101011101010 | 1001000000000000 -> 1001101011101010
+            } else if (number < 256 && number > 0) {
+                output.high = this->low << (number - 128);
+            }
+            return output;
+        }
+        int256_t& operator<<=(const __uint32_t& number) {
+            if (number < 128 && number > 0) {
+                __uint128_t overflow = this->low >> (128 - number);
+                this->low = this->low << number;
+                this->high = this->high << number | overflow;
+            } else if (number < 256 && number > 0) {
+                this->high = this->low << (number - 128);
+                this->low = 0;
+            }
+            return *this;
+        }
+        int256_t operator>>(const __uint32_t& number) {
+            int256_t output;
+            if (number < 128 && number > 0) {
+                __uint128_t overflow = this->high << (128 - number);
+                output.high = this->high >> number;
+                output.low = this->low >> number | overflow;
+            } else if (number < 256 && number > 0) {
+                output.low = this->high >> (number - 128);
+            }
+            return output;
+        }
+        int256_t& operator>>=(const __uint32_t& number) {
+            if (number < 128 && number > 0) {
+                __uint128_t overflow = this->high << (128 - number);
+                this->high = this->high >> number;
+                this->low = this->low >> number | overflow;
+            } else if (number < 256 && number > 0) {
+                this->low = this->high >> (number - 128);
+            } else {
+                this->low = 0;
+                this->high = 0;
+            }
             return *this;
         }
         ~int256_t();
