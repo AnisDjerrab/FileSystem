@@ -8,78 +8,83 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <fstream>
+#include <bitset>
 
 using namespace std;
 
 
 // This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
-class int256_t {
-    private:
-        __uint128_t high = 0;
-        __uint128_t low = 0; 
+class uint256_t {
     public:
-        int256_t& operator=(const int256_t& number) {
+        __uint128_t high;
+        __uint128_t low; 
+        uint256_t(int64_t input = 0) {
+            low = input;
+            high = 0;
+        } 
+        uint256_t& operator=(const uint256_t& number) {
             low = number.low;
             high = number.high;
             return *this;
         }
-        int256_t operator^(const int256_t& number) {
-            int256_t result;
+        uint256_t operator^(const uint256_t& number) {
+            uint256_t result;
             result.high = this->high ^ number.high;
             result.low = this->low ^ number.low;
             return result;
         }
-        int256_t& operator^=(const int256_t& number) {
+        uint256_t& operator^=(const uint256_t& number) {
             high ^= number.high;
             low ^= number.low;
             return *this;
         }
-        bool operator==(const int256_t& number) {
+        bool operator==(const uint256_t& number) {
             return (this->high == number.high && this->low == number.low);
         }
-        bool operator!=(const int256_t& number) {
+        bool operator!=(const uint256_t& number) {
             return (!(this->high == number.high && this->low == number.low));
         }
-        bool operator>=(const int256_t& number) {
+        bool operator>=(const uint256_t& number) {
             return ((this->high == number.high && this->low == number.low) || (this->high > number.high) || (this->high == number.high && this->low > number.low));
         }
-        bool operator>(const int256_t& number) {
+        bool operator>(const uint256_t& number) {
             return ((this->high > number.high) || (this->high == number.high && this->low > number.low));
         }
-        bool operator<=(const int256_t& number) {
+        bool operator<=(const uint256_t& number) {
             return ((this->high == number.high && this->low == number.low) || (this->high < number.high) || (this->high == number.high && this->low < number.low));
         }
-        bool operator<(const int256_t& number) {
+        bool operator<(const uint256_t& number) {
             return ((this->high < number.high) || (this->high == number.high && this->low < number.low));
         }
-        int256_t operator+(const int256_t& number) {
-            int256_t output;
+        uint256_t operator+(const uint256_t& number) {
+            uint256_t output;
             output.low = this->low + number.low;
             bool flag = (low > output.low);
             output.high = this->high + number.high + flag;
             return output;
         }
-        int256_t& operator+=(const int256_t& number) {
+        uint256_t& operator+=(const uint256_t& number) {
             this->low = this->low + number.low;
             bool flag = (low > this->low);
             this->high = this->high + number.high + flag;
             return *this;
         }
-        int256_t operator-(const int256_t& number) {
-            int256_t output;
+        uint256_t operator-(const uint256_t& number) {
+            uint256_t output;
             output.low = this->low - number.low;
             bool flag = (output.low > low);
             output.high = this->high - number.high - flag;
             return output;
         }
-        int256_t operator-=(const int256_t& number) {
+        uint256_t operator-=(const uint256_t& number) {
             this->low = this->low - number.low;
             bool flag = (this->low > low);
             this->high = this->high - number.high - flag;
             return *this;
         }
-        int256_t operator<<(const __uint32_t& number) {
-            int256_t output;
+        uint256_t operator<<(const __uint32_t& number) {
+            uint256_t output;
             if (number < 128 && number > 0) {
                 __uint128_t overflow = this->low >> (128 - number);
                 output.low = this->low << number;
@@ -90,7 +95,7 @@ class int256_t {
             }
             return output;
         }
-        int256_t& operator<<=(const __uint32_t& number) {
+        uint256_t& operator<<=(const __uint32_t& number) {
             if (number < 128 && number > 0) {
                 __uint128_t overflow = this->low >> (128 - number);
                 this->low = this->low << number;
@@ -101,8 +106,8 @@ class int256_t {
             }
             return *this;
         }
-        int256_t operator>>(const __uint32_t& number) {
-            int256_t output;
+        uint256_t operator>>(const __uint32_t& number) {
+            uint256_t output;
             if (number < 128 && number > 0) {
                 __uint128_t overflow = this->high << (128 - number);
                 output.high = this->high >> number;
@@ -112,7 +117,7 @@ class int256_t {
             }
             return output;
         }
-        int256_t& operator>>=(const __uint32_t& number) {
+        uint256_t& operator>>=(const __uint32_t& number) {
             if (number < 128 && number > 0) {
                 __uint128_t overflow = this->high << (128 - number);
                 this->high = this->high >> number;
@@ -125,9 +130,9 @@ class int256_t {
             }
             return *this;
         }
-        int256_t operator*(const int256_t& number) {
+        uint256_t& operator*(const uint256_t& number) {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
-            int256_t output;
+            uint256_t output;
             size_t index = 0;
             int o = 0;
             for (int i = 3; i > -1; i--) {
@@ -154,7 +159,7 @@ class int256_t {
             }
             return output;
         }
-        int256_t operator*=(const int256_t& number) {
+        uint256_t operator*=(const uint256_t& number) {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
             size_t index = 0;
             int o = 0;
@@ -182,9 +187,15 @@ class int256_t {
             }
             return *this;
         }
-        ~int256_t();
+        ~uint256_t();
 };
 
+ostream& operator<<(ostream& os, const uint256_t& number) {
+    bitset<256> HighBits(number.high);
+    bitset<256> LowBits(number.low);
+    os << HighBits << LowBits;
+    return os;
+}
 
 __int128_t hash128(char* content, size_t SizeOfTheContent) {
     __int128_t output = 340282366920938463463374607431768211297;
