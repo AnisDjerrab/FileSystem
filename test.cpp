@@ -7,6 +7,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <cmath>
 
 using namespace std;
 
@@ -121,6 +122,63 @@ class int256_t {
             } else {
                 this->low = 0;
                 this->high = 0;
+            }
+            return *this;
+        }
+        int256_t operator*(const int256_t& number) {
+            uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
+            int256_t output;
+            size_t index = 0;
+            int o = 0;
+            for (int i = 3; i > -1; i--) {
+                o++;
+                if (parts[i] != 0) {
+                    int temp = 0;
+                    int pos = 0;
+                    while (index < o*64) {
+                        temp = __builtin_clzll(static_cast<uint64_t>(parts[i] << pos));
+                        if (temp == 0 && pos >= 63) {
+                            index += 64 - pos;
+                            break;
+                        } else if (temp != 0) {
+                            index += temp;
+                            pos += temp;
+                        } 
+                        output += (*this << (255 - index));
+                        index += 1;
+                        pos += 1;
+                    }
+                } else {
+                    index += 64;
+                }
+            }
+            return output;
+        }
+        int256_t operator*=(const int256_t& number) {
+            uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
+            size_t index = 0;
+            int o = 0;
+            for (int i = 3; i > -1; i--) {
+                o++;
+                if (parts[i] != 0) {
+                    int temp = 0;
+                    int pos = 0;
+                    while (index < o*64) {
+                        temp = __builtin_clzll(static_cast<uint64_t>(parts[i] << pos));
+                        if (temp == 0 && pos >= 63) {
+                            index += 64 - pos;
+                            break;
+                        } else if (temp != 0) {
+                            index += temp;
+                            pos += temp;
+                        } 
+                        *this += (*this << (255 - index));
+                        index += 1;
+                        pos += 1;
+                    }
+                } else {
+                    index += 64;
+                }
             }
             return *this;
         }
