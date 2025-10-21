@@ -27,7 +27,7 @@ class uint256_t {
     public:
         __uint128_t high;
         __uint128_t low; 
-        uint256_t(int64_t input = 0) {
+        uint256_t(uint64_t input = 0) {
             low = input;
             high = 0;
         } 
@@ -73,8 +73,9 @@ class uint256_t {
             return output;
         }
         uint256_t& operator+=(const uint256_t& number) {
+            __uint128_t temp = this->low;
             this->low = this->low + number.low;
-            bool flag = (low > this->low);
+            bool flag = (low > temp);
             this->high = this->high + number.high + flag;
             return *this;
         }
@@ -85,9 +86,10 @@ class uint256_t {
             output.high = this->high - number.high - flag;
             return output;
         }
-        uint256_t operator-=(const uint256_t& number) {
+        uint256_t& operator-=(const uint256_t& number) {
+            __uint128_t temp = this->low;
             this->low = this->low - number.low;
-            bool flag = (this->low > low);
+            bool flag = (this->low > temp);
             this->high = this->high - number.high - flag;
             return *this;
         }
@@ -138,7 +140,7 @@ class uint256_t {
             }
             return *this;
         }
-        uint256_t& operator*(const uint256_t& number) {
+        uint256_t operator*(const uint256_t& number) {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
             uint256_t output;
             size_t index = 0;
@@ -167,7 +169,7 @@ class uint256_t {
             }
             return output;
         }
-        uint256_t operator*=(const uint256_t& number) {
+        uint256_t& operator*=(const uint256_t& number) {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
             size_t index = 0;
             int o = 0;
@@ -195,21 +197,139 @@ class uint256_t {
             }
             return *this;
         }
-        uint256_t operator/(const uint256_t& number) {
-            if (number == 0) {
-
-            }            
+        uint256_t operator|(const uint256_t& number) {
             uint256_t output;
+            output.low |= number.low;
+            output.high |= number.high;
+            return output;
+        }
+        uint256_t& operator|=(const uint256_t& number) {
+            this->low |= number.low;
+            this->high |= number.high;
+            return *this;
+        }
+        uint256_t operator&(const uint256_t& number) {
+            uint256_t output;
+            output.low &= number.low;
+            output.high &= number.high;
+            return output;
+        }
+        uint256_t& operator&=(const uint256_t& number) {
+            this->low &= number.low;
+            this->high &= number.high;
+            return *this;
+        }
+        uint256_t operator/(const uint256_t& number) {
+            uint256_t output;
+            if (number.low == 0 && number.high == 0) {
+                throw invalid_argument("Divisor Equals 0");
+            }            
+            if (*this < number) {
+                return output;
+            }
             uint256_t divised = *this;
             uint256_t divisor = number;
-            uint64_t parts1[4] = {(uint64_t)(divisor.high >> 64), (uint64_t)(divisor.high), (uint64_t)(divisor.low >> 64), (uint64_t)(divisor.low)};
-            uint64_t parts2[4] = {(uint64_t)(divised.high >> 64), (uint64_t)(divised.high), (uint64_t)(divised.low >> 64), (uint64_t)(divised.low)};
-            while (divisor < divised) {
-                int index1 = 0;
-                int index2 = 0;
-                for (int i = 0; i < 4; i++) {
+            int shift = 0;
+            while ((divisor << 1) <= divised) {
+                divisor <<= 1;
+                shift++;
+            }
+            while (true) {
+                if (divised >= divisor) {
+                    divised -= divisor;
+                    output |= uint256_t(1) << shift;
+                }
+                divisor >>= 1;
+                shift--;
+                if (shift < 0) {
+                    break;
                 }
             }
+            return output;
+        }
+        uint256_t& operator/=(const uint256_t& number) {
+            if (number.low == 0 && number.high == 0) {
+                throw invalid_argument("Divisor Equals 0");
+            }            
+            if (*this < number) {
+                this->high = 0;
+                this->low = 0;
+                return *this;
+            }
+            uint256_t divised = *this;
+            uint256_t divisor = number;
+            int shift = 0;
+            while ((divisor << 1) <= divised) {
+                divisor <<= 1;
+                shift++;
+            }
+            this->high = 0;
+            this->low = 0;
+            while (true) {
+                if (divised >= divisor) {
+                    divised -= divisor;
+                    *this |= uint256_t(1) << shift;
+                }
+                divisor >>= 1;
+                shift--;
+                if (shift < 0) {
+                    break;
+                }
+            }
+            return *this;
+        }
+        uint256_t operator%(const uint256_t& number) {
+            if (number.low == 0 && number.high == 0) {
+                throw invalid_argument("Divisor Equals 0");
+            }            
+            if (*this < number) {
+                return uint256_t(0);
+            }
+            uint256_t divised = *this;
+            uint256_t divisor = number;
+            int shift = 0;
+            while ((divisor << 1) <= divised) {
+                divisor <<= 1;
+                shift++;
+            }
+            while (true) {
+                if (divised >= divisor) {
+                    divised -= divisor;
+                }
+                divisor >>= 1;
+                shift--;
+                if (shift < 0) {
+                    break;
+                }
+            }
+            return divised;
+        }
+        uint256_t& operator%=(const uint256_t& number) {
+            if (number.low == 0 && number.high == 0) {
+                throw invalid_argument("Divisor Equals 0");
+            }            
+            if (*this < number) {
+                this->high = 0;
+                this->low = 0;
+                return *this;
+            }
+            uint256_t divisor = number;
+            int shift = 0;
+            while ((divisor << 1) <= *this) {
+                divisor <<= 1;
+                shift++;
+            }
+            while (true) {
+                if (*this >= divisor) {
+                    *this -= divisor;
+                }
+                divisor >>= 1;
+                shift--;
+                if (shift < 0) {
+                    break;
+                }
+            }
+            return *this;
         }
         ~uint256_t();
 };
@@ -254,6 +374,7 @@ void flipRandomBit(char* block, size_t size, mt19937& gen) {
 }
 
 int main() {
+
     constexpr size_t BLOCK_SIZE = 32768;
 
     int number = 0;
@@ -289,7 +410,7 @@ int main() {
             seenHashesAndBlocks.clear();
             number = 0;
         }
-        if (iterations >= 1000000) {
+        if (iterations >= 0) {
             newHash = originalHash;
         }
         if (newHash == originalHash) {
