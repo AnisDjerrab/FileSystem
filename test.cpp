@@ -15,6 +15,14 @@ using namespace std;
 
 
 // This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
+
+ostream& operator<<(ostream& os, const uint256_t& number) {
+    bitset<256> HighBits(number.high);
+    bitset<256> LowBits(number.low);
+    os << HighBits << LowBits;
+    return os;
+}
+
 class uint256_t {
     public:
         __uint128_t high;
@@ -187,15 +195,25 @@ class uint256_t {
             }
             return *this;
         }
+        uint256_t operator/(const uint256_t& number) {
+            if (number == 0) {
+
+            }            
+            uint256_t output;
+            uint256_t divised = *this;
+            uint256_t divisor = number;
+            uint64_t parts1[4] = {(uint64_t)(divisor.high >> 64), (uint64_t)(divisor.high), (uint64_t)(divisor.low >> 64), (uint64_t)(divisor.low)};
+            uint64_t parts2[4] = {(uint64_t)(divised.high >> 64), (uint64_t)(divised.high), (uint64_t)(divised.low >> 64), (uint64_t)(divised.low)};
+            while (divisor < divised) {
+                int index1 = 0;
+                int index2 = 0;
+                for (int i = 0; i < 4; i++) {
+                }
+            }
+        }
         ~uint256_t();
 };
 
-ostream& operator<<(ostream& os, const uint256_t& number) {
-    bitset<256> HighBits(number.high);
-    bitset<256> LowBits(number.low);
-    os << HighBits << LowBits;
-    return os;
-}
 
 __int128_t hash128(char* content, size_t SizeOfTheContent) {
     __int128_t output = 340282366920938463463374607431768211297;
