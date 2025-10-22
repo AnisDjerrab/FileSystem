@@ -141,39 +141,10 @@ class uint256_t {
         }
         uint256_t operator*(const uint256_t& number) {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
-            uint256_t output;
-            size_t index = 0;
-            int o = 0;
-            for (int i = 3; i > -1; i--) {
-                o++;
-                if (parts[i] != 0) {
-                    int temp = 0;
-                    int pos = 0;
-                    while (index < o*64) {
-                        temp = __builtin_clzll(static_cast<uint64_t>(parts[i] << pos));
-                        if (temp == 0 && pos >= 63) {
-                            index += 64 - pos;
-                            break;
-                        } else if (temp != 0) {
-                            index += temp;
-                            pos += temp;
-                        } 
-                        output += (*this << (255 - index));
-                        index += 1;
-                        pos += 1;
-                    }
-                } else {
-                    index += 64;
-                }
-            }
-            return output;
-        }
-        uint256_t& operator*=(const uint256_t& number) {
-            uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
             size_t index = 0;
             int o = 0;
             uint256_t Static = *this;
-            this->low = 0;
+            uint256_t output;
             for (int i = 3; i > -1; i--) {
                 o++;
                 if (parts[i] != 0) {
@@ -197,11 +168,61 @@ class uint256_t {
                             }
                         }
                         if (index >= 0 && index < 128) {
-                            if (!(Static.high & (1ULL << 127 - index))) {
+                            if (!(number.high & (1ULL << 127 - index))) {
                                 increment = false;
                             } 
                         } else if (index >= 128) {
-                            if (!(Static.low & (1ULL << 255 - index))) {
+                            if (!(number.low & (1ULL << 255 - index))) {
+                                increment = false;
+                            } 
+                        }
+                        if (increment) {
+                            output += (Static << (255 - index));
+                        }
+                        index += 1;
+                        pos += 1;
+                    }
+                } else {
+                    index += 64;
+                }
+            }
+            return output;
+        }
+        uint256_t& operator*=(const uint256_t& number) {
+            uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
+            size_t index = 0;
+            int o = 0;
+            uint256_t Static = *this;
+            this->low = 0;
+            this->high = 0;
+            for (int i = 3; i > -1; i--) {
+                o++;
+                if (parts[i] != 0) {
+                    int temp = 0;
+                    int pos = 0;
+                    bool increment;
+                    while (index < o*64) {
+                        increment = true;
+                        temp = __builtin_clzll(static_cast<uint64_t>(parts[i] << pos));
+                        if (temp == 0 && pos >= 63) {
+                            index += 64 - pos;
+                            break;
+                        } else if (temp != 0) {
+                            index += temp;
+                            pos += temp;
+                            if (index > o*64 - 1) {
+                                index = o*64 - 1;
+                            }
+                            if (pos > 63) {
+                                pos == 63;
+                            }
+                        }
+                        if (index >= 0 && index < 128) {
+                            if (!(number.high & (1ULL << 127 - index))) {
+                                increment = false;
+                            } 
+                        } else if (index >= 128) {
+                            if (!(number.low & (1ULL << 255 - index))) {
                                 increment = false;
                             } 
                         }
@@ -401,9 +422,6 @@ void flipRandomBit(char* block, size_t size, mt19937& gen) {
 }
 
 int main() {
-    uint256_t Integer = 3;
-    Integer *= 2;
-    cout << Integer << endl;
     constexpr size_t BLOCK_SIZE = 32768;
 
     int number = 0;
