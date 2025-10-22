@@ -15,14 +15,6 @@ using namespace std;
 
 
 // This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
-
-ostream& operator<<(ostream& os, const uint256_t& number) {
-    bitset<256> HighBits(number.high);
-    bitset<256> LowBits(number.low);
-    os << HighBits << LowBits;
-    return os;
-}
-
 class uint256_t {
     public:
         __uint128_t high;
@@ -68,14 +60,14 @@ class uint256_t {
         uint256_t operator+(const uint256_t& number) {
             uint256_t output;
             output.low = this->low + number.low;
-            bool flag = (low > output.low);
+            bool flag = (output.low < this->low);
             output.high = this->high + number.high + flag;
             return output;
         }
         uint256_t& operator+=(const uint256_t& number) {
             __uint128_t temp = this->low;
             this->low = this->low + number.low;
-            bool flag = (low > temp);
+            bool flag = (this->low < temp);
             this->high = this->high + number.high + flag;
             return *this;
         }
@@ -102,6 +94,9 @@ class uint256_t {
                 // OR operation -> eg -> 0000101011101010 | 1001000000000000 -> 1001101011101010
             } else if (number < 256 && number > 0) {
                 output.high = this->low << (number - 128);
+                output.low = 0;
+            } else if (number == 0) {
+                return *this;
             }
             return output;
         }
@@ -113,6 +108,8 @@ class uint256_t {
             } else if (number < 256 && number > 0) {
                 this->high = this->low << (number - 128);
                 this->low = 0;
+            } else if (number == 0) {
+                return *this;
             }
             return *this;
         }
@@ -124,6 +121,9 @@ class uint256_t {
                 output.low = this->low >> number | overflow;
             } else if (number < 256 && number > 0) {
                 output.low = this->high >> (number - 128);
+                output.low = 0;
+            } else if (number == 0) {
+                return *this;
             }
             return output;
         }
@@ -134,9 +134,8 @@ class uint256_t {
                 this->low = this->low >> number | overflow;
             } else if (number < 256 && number > 0) {
                 this->low = this->high >> (number - 128);
-            } else {
-                this->low = 0;
-                this->high = 0;
+            } else if (number == 0) {
+                return *this;
             }
             return *this;
         }
@@ -173,12 +172,16 @@ class uint256_t {
             uint64_t parts[4] = {(uint64_t)(number.low), (uint64_t)(number.low >> 64), (uint64_t)(number.high), (uint64_t)(number.high >> 64)};
             size_t index = 0;
             int o = 0;
+            uint256_t Static = *this;
+            this->low = 0;
             for (int i = 3; i > -1; i--) {
                 o++;
                 if (parts[i] != 0) {
                     int temp = 0;
                     int pos = 0;
+                    bool increment;
                     while (index < o*64) {
+                        increment = true;
                         temp = __builtin_clzll(static_cast<uint64_t>(parts[i] << pos));
                         if (temp == 0 && pos >= 63) {
                             index += 64 - pos;
@@ -186,8 +189,25 @@ class uint256_t {
                         } else if (temp != 0) {
                             index += temp;
                             pos += temp;
-                        } 
-                        *this += (*this << (255 - index));
+                            if (index > o*64 - 1) {
+                                index = o*64 - 1;
+                            }
+                            if (pos > 63) {
+                                pos == 63;
+                            }
+                        }
+                        if (index >= 0 && index < 128) {
+                            if (!(Static.high & (1ULL << 127 - index))) {
+                                increment = false;
+                            } 
+                        } else if (index >= 128) {
+                            if (!(Static.low & (1ULL << 255 - index))) {
+                                increment = false;
+                            } 
+                        }
+                        if (increment) {
+                            *this += (Static << (255 - index));
+                        }
                         index += 1;
                         pos += 1;
                     }
@@ -331,12 +351,19 @@ class uint256_t {
             }
             return *this;
         }
-        ~uint256_t();
+        ~uint256_t(){};
 };
+
+ostream& operator<<(ostream& os, const uint256_t& number) {
+    bitset<256> HighBits(number.high);
+    bitset<256> LowBits(number.low);
+    os << HighBits << LowBits;
+    return os;
+}
 
 
 __int128_t hash128(char* content, size_t SizeOfTheContent) {
-    __int128_t output = 340282366920938463463374607431768211297;
+    __int128_t output = 340282366660938463463374607431768211297;
     __int128_t temp;
     SizeOfTheContent = SizeOfTheContent & ~0xF;
     for (size_t i = 0; i > SizeOfTheContent; i += 16) {
@@ -374,7 +401,9 @@ void flipRandomBit(char* block, size_t size, mt19937& gen) {
 }
 
 int main() {
-
+    uint256_t Integer = 3;
+    Integer *= 2;
+    cout << Integer << endl;
     constexpr size_t BLOCK_SIZE = 32768;
 
     int number = 0;
@@ -410,7 +439,7 @@ int main() {
             seenHashesAndBlocks.clear();
             number = 0;
         }
-        if (iterations >= 0) {
+        if (iterations >= 10000) {
             newHash = originalHash;
         }
         if (newHash == originalHash) {
