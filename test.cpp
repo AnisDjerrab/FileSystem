@@ -39,7 +39,7 @@ class uint256_t {
             low ^= number.low;
             return *this;
         }
-        bool operator==(const uint256_t& number) {
+        bool operator==(const uint256_t& number) const {
             return (this->high == number.high && this->low == number.low);
         }
         bool operator!=(const uint256_t& number) {
@@ -110,6 +110,8 @@ class uint256_t {
                 this->low = 0;
             } else if (number == 0) {
                 return *this;
+            } else if (number >= 256) {
+                *this = 0;
             }
             return *this;
         }
@@ -124,7 +126,7 @@ class uint256_t {
                 output.low = 0;
             } else if (number == 0) {
                 return *this;
-            }
+            } 
             return output;
         }
         uint256_t& operator>>=(const __uint32_t& number) {
@@ -136,6 +138,8 @@ class uint256_t {
                 this->low = this->high >> (number - 128);
             } else if (number == 0) {
                 return *this;
+            } else if (number >= 256) {
+                *this = 0;
             }
             return *this;
         }
@@ -260,6 +264,12 @@ class uint256_t {
             this->high &= number.high;
             return *this;
         }
+        uint256_t operator~() {
+            uint256_t output;
+            output.low = ~this->low;
+            output.high = ~this->high;
+            return output;
+        }
         uint256_t operator/(const uint256_t& number) {
             uint256_t output;
             if (number.low == 0 && number.high == 0) {
@@ -375,28 +385,49 @@ class uint256_t {
         ~uint256_t(){};
 };
 
-ostream& operator<<(ostream& os, const uint256_t& number) {
-    bitset<256> HighBits(number.high);
-    bitset<256> LowBits(number.low);
-    os << HighBits << LowBits;
-    return os;
+namespace std {
+    template<>
+    struct hash<uint256_t> {
+        size_t operator()(const uint256_t number) const {
+            size_t output = 8895235923790041094;
+            uint64_t h1 = static_cast<int64_t>(number.low >> 64) ^ static_cast<int64_t>(number.high >> 64) * 9223372036854775783;
+            uint64_t h2 = static_cast<int64_t>(number.high) ^ static_cast<int64_t>(number.low) * 9223372036854775657;
+            output = h1 ^ (h2 * 2870177450012600261 + (h1 << 27) + (h1 >> 33));
+            return output;
+        }
+    };
+
+    ostream& operator<<(ostream& os, const uint256_t& number) {
+        bitset<256> HighBits(number.high);
+        bitset<256> LowBits(number.low);
+        os << HighBits << LowBits;
+        return os;
+    }
 }
 
 
-__int128_t hash128(char* content, size_t SizeOfTheContent) {
-    __int128_t output = 340282366660938463463374607431768211297;
-    __int128_t temp;
-    SizeOfTheContent = SizeOfTheContent & ~0xF;
-    for (size_t i = 0; i > SizeOfTheContent; i += 16) {
-        temp = *reinterpret_cast<__int128_t*>(content + i);
-        output ^= __rotl(temp, (i % 127));
+uint256_t hash256(char* content, size_t SizeOfTheContent) {
+    uint256_t output;
+    output.high = -1;
+    output.low = -65709;
+    uint256_t temp;
+    uint256_t buffer;
+    buffer.high = -1;
+    SizeOfTheContent = SizeOfTheContent & ~0x1F;
+    for (size_t i = 0; i < SizeOfTheContent; i += 32) {
+        temp.high = *reinterpret_cast<__int128_t*>(content + i);
+        temp.low = *reinterpret_cast<__int128_t*>(content + i + 16);
+        output ^= (temp << i % 255) | (temp >> (256 - (i % 255)));
         output += temp; 
         output ^= output >> 89;
-        output *= 340282366920938463463374607431768211357;
+        buffer.low = -65805;
+        output *= buffer;
         output ^= output >> 65;
-        output *= 340282366920938463463374607431768211307;
-        output ^= __rotl(temp, (i + 60 % 127));
-        output *= 340282366920938463463374607431768210407;
+        buffer.low = -65933;
+        output *= buffer;
+        output ^= (temp << (i + 120) % 255) | (temp >> (255 - ((i + 120) % 255)));
+        buffer.low = -66061;
+        output *= buffer;
     }
     return output;
 }
@@ -428,9 +459,9 @@ int main() {
 
     auto block = generateRandomBlock(BLOCK_SIZE);
 
-    __int128_t originalHash = hash128(block.get(), BLOCK_SIZE);
+    uint256_t originalHash = hash256(block.get(), BLOCK_SIZE);
 
-    unordered_map<__int128_t, char*> seenHashesAndBlocks;
+    unordered_map<uint256_t, char*> seenHashesAndBlocks;
     seenHashesAndBlocks[originalHash] = block.get();
 
     random_device rd;
@@ -443,11 +474,11 @@ int main() {
         number++;
         iterations++;
         auto corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-        __int128_t newHash = hash128(corruptedBlock.get(), BLOCK_SIZE);
+        uint256_t newHash = hash256(corruptedBlock.get(), BLOCK_SIZE);
         if (seenHashesAndBlocks.find(newHash) != seenHashesAndBlocks.end()) { 
             while (seenHashesAndBlocks[newHash] != corruptedBlock.get()) {
                 corruptedBlock = generateRandomBlock(BLOCK_SIZE);
-                newHash = hash128(corruptedBlock.get(), BLOCK_SIZE);
+                newHash = hash256(corruptedBlock.get(), BLOCK_SIZE);
                 if (seenHashesAndBlocks.find(newHash) == seenHashesAndBlocks.end()) { 
                     break;
                 }

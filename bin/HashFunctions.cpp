@@ -44,7 +44,7 @@ int64_t hash64(char* content, size_t SizeOfTheContent) {
 __attribute__((visiblity("default")))
 __int128_t hash128(char* content, size_t SizeOfTheContent);
 __int128_t hash128(char* content, size_t SizeOfTheContent) {
-    __int128_t output = 340282366920938463463374607431768211297;
+    __int128_t output = -159;
     __int128_t temp;
     SizeOfTheContent = SizeOfTheContent & ~0xF;
     for (size_t i = 0; i < SizeOfTheContent; i += 16) {
@@ -52,11 +52,11 @@ __int128_t hash128(char* content, size_t SizeOfTheContent) {
         output ^= __rotl(temp, (i % 127));
         output += temp; 
         output ^= output >> 89;
-        output *= 340282366920938463463374607431768211357;
+        output *= -99;
         output ^= output >> 65;
-        output *= 340282366920938463463374607431768211307;
+        output *= -149;
         output ^= __rotl(temp, (i + 60 % 127));
-        output *= 340282366920938463463374607431768210407;
+        output *= -1049;
     }
     return output;
 }
