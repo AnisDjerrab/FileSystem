@@ -10,6 +10,7 @@
 #include <cmath>
 #include <fstream>
 #include <bitset>
+#include <immintrin.h> 
 
 using namespace std;
 
@@ -17,59 +18,87 @@ using namespace std;
 // This's the class responsible for 256-bit operations inside the 256-bits hash function. It's Essential ans needs to be performant.
 class uint256_t {
     public:
-        __uint128_t high;
-        __uint128_t low; 
+        uint64_t parts[4]; // parts[0] -> lowest 64 bits, parts[3] -> highest 64 bits
         uint256_t(uint64_t input = 0) {
-            low = input;
-            high = 0;
+            parts[0] = input;
+            parts[1] = 0;
+            parts[2] = 0;
+            parts[3] = 0;
         } 
         uint256_t& operator=(const uint256_t& number) {
-            low = number.low;
-            high = number.high;
+            *this = number;
             return *this;
         }
         uint256_t operator^(const uint256_t& number) {
             uint256_t result;
-            result.high = this->high ^ number.high;
-            result.low = this->low ^ number.low;
+            for (int i = 0; i < 4; i++) {
+                result.parts[i] = this->parts[i] ^ number.parts[i];
+            }
             return result;
         }
         uint256_t& operator^=(const uint256_t& number) {
-            high ^= number.high;
-            low ^= number.low;
+            for (int i = 0; i < 4; i++) {
+                this->parts[i] = this->parts[i] ^ number.parts[i];
+            }
             return *this;
         }
         bool operator==(const uint256_t& number) const {
-            return (this->high == number.high && this->low == number.low);
+            return (memcmp(this->parts, number.parts, sizeof(parts)) == 0);
         }
         bool operator!=(const uint256_t& number) {
-            return (!(this->high == number.high && this->low == number.low));
+            return (memcmp(this->parts, number.parts, sizeof(parts)) != 0);
         }
         bool operator>=(const uint256_t& number) {
-            return ((this->high == number.high && this->low == number.low) || (this->high > number.high) || (this->high == number.high && this->low > number.low));
+            for (int i = 3; i > -1; i--) {
+                if (this->parts[i] > number.parts[i]) {
+                    return true;
+                } else if (this->parts[i] < number.parts[i]) {
+                    return false; 
+                }
+            }
+            return true;
         }
-        bool operator>(const uint256_t& number) {
-            return ((this->high > number.high) || (this->high == number.high && this->low > number.low));
+        bool operator>=(const uint256_t& number) {
+            for (int i = 3; i > -1; i--) {
+                if (this->parts[i] > number.parts[i]) {
+                    return true;
+                } else if (this->parts[i] < number.parts[i]) {
+                    return false; 
+                }
+            }
+            return false;
         }
         bool operator<=(const uint256_t& number) {
-            return ((this->high == number.high && this->low == number.low) || (this->high < number.high) || (this->high == number.high && this->low < number.low));
+            for (int i = 3; i > -1; i--) {
+                if (this->parts[i] < number.parts[i]) {
+                    return true;
+                } else if (this->parts[i] > number.parts[i]) {
+                    return false; 
+                }
+            }
+            return true;
         }
-        bool operator<(const uint256_t& number) {
-            return ((this->high < number.high) || (this->high == number.high && this->low < number.low));
+        bool operator<=(const uint256_t& number) {
+            for (int i = 3; i > -1; i--) {
+                if (this->parts[i] < number.parts[i]) {
+                    return true;
+                } else if (this->parts[i] > number.parts[i]) {
+                    return false; 
+                }
+            }
+            return false;
         }
         uint256_t operator+(const uint256_t& number) {
             uint256_t output;
-            output.low = this->low + number.low;
-            bool flag = (output.low < this->low);
-            output.high = this->high + number.high + flag;
+            output.parts[0] = this->parts[0] + number.parts[0];
+            output.parts[1] = this->parts[1] + number.parts[1] + (output.parts[0] < this->parts[0]);
+            output.parts[2] = this->parts[2] + number.parts[2] + (output.parts[1] < this->parts[1]);
+            output.parts[3] = this->parts[3] + number.parts[3] + (output.parts[2] < this->parts[2]);
             return output;
         }
         uint256_t& operator+=(const uint256_t& number) {
-            __uint128_t temp = this->low;
-            this->low = this->low + number.low;
-            bool flag = (this->low < temp);
-            this->high = this->high + number.high + flag;
-            return *this;
+            unsigned char carry = 0;
+            carry = __addcarry_u64();
         }
         uint256_t operator-(const uint256_t& number) {
             uint256_t output;
